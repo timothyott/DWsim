@@ -287,9 +287,6 @@ def search_domain(N, P, D, NK, Current_position, policy, Power_key, Domain_decis
     return Current_position, steps, scans
 
 def decision_weaving_threshold(Current_position, N, P, D, NK, Power_key, Domain_decision_set, threshold, ss_prob):
-    New_position = Current_position.copy()
-    #why?
-    New_position[0] = abs(Current_position[0] - 1)
     unvisited_policies = np.arange(P)
     stepped = 0
     scanned = 1 #you scan the position you start in
@@ -465,12 +462,13 @@ def local_max(position, N, NK, Power_key):
 
 def max_fitness(NK, N, Power_key):
     #Need to change this to utilize local_max column in landscape matrix
-    max_fit=0
-    for dec in itertools.product(range(2), repeat=N):
-        curr_fit = fitness(dec, N, NK, Power_key)
-        if curr_fit > max_fit:
-            max_fit = curr_fit
-    return max_fit
+    # max_fit=0
+    # for dec in itertools.product(range(2), repeat=N):
+    #     curr_fit = fitness(dec, N, NK, Power_key)
+    #     if curr_fit > max_fit:
+    #         max_fit = curr_fit
+
+    return max(NK[:,2*N])
 
 def chunk_fitness(position, num_dec_in_chunk, N, NK, Power_key):
     return np.mean(NK[np.sum(position*Power_key), N:(N+num_dec_in_chunk)])
