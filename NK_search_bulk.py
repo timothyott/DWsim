@@ -55,10 +55,10 @@ def main(inputFile, runs, thresh, chunky, ss_prob):
     
     filename = str(inputFile)
     print("Simulating "+filename+"...", end=" ")
-    P = int(filename[filename.find("P_")+2])
-    D = int(filename[filename.find("D_")+2])
-    Kw = float(filename[filename.find("within_")+7:filename.find("b")-3])
-    Kb = float(filename[filename.find("between_")+8:filename.find("i_")-1])
+    P = int(filename[filename.find("P_")+len("P_")])
+    D = int(filename[filename.find("D_")+len("D_")])
+    Kw = float(filename[filename.find("within_")+len("within_"):filename.find("_K_between")])
+    Kb = float(filename[filename.find("between_")+len("between_"):filename.find("_i_")])
     Domain_decision_set = domain_dec_set(D)
     i = NK.shape[0]
     N = int(np.log2(NK.shape[1]))
@@ -90,7 +90,9 @@ def main(inputFile, runs, thresh, chunky, ss_prob):
     chunky_global_count = 0
 
     for land in range(i): 
-        max_fit = max_fitness(NK[land], N, Power_key)
+        max_fit = max(NK[land,:,2*N])
+        # max_fitness(NK[land], N, Power_key)
+        
         for _ in range(runs):
             start = random_start(N)
             start_fit = fitness(start, N, NK[land], Power_key)
@@ -100,24 +102,32 @@ def main(inputFile, runs, thresh, chunky, ss_prob):
             (dw_steps, dw_scans, dw_fit, dw_steps_per_domain) = decision_weaving_threshold(start, N, P, D, NK[land], Power_key, Domain_decision_set, threshold, ss_prob)
             (chunky_steps, chunky_scans, chunky_fit) = chunky_search(start, N, NK[land], Power_key, chunk_flags[chunk_key])
 
+
             num_local_steps.append(local_steps)
             num_local_scans.append(local_scans)
+
             final_local_fitness.append(local_fit)
+
             norm_local_fit = local_fit / max_fit
             norm_local_fitness.append(norm_local_fit)
             final_local_diff.append(norm_local_fit - norm_start_fit)
+            
             if local_fit == max_fit:
                 local_global_count += 1
             else:
                 nonglobal_local_fit.append(norm_local_fit)
 
+
             num_dw_steps.append(dw_steps)
             num_dw_steps_per_domain.append(dw_steps_per_domain)
             num_dw_scans.append(dw_scans)
+
             final_dw_fitness.append(dw_fit)
+
             norm_dw_fit = dw_fit/max_fit
             norm_dw_fitness.append(norm_dw_fit)
             final_dw_diff.append(norm_dw_fit - norm_start_fit)
+
             if dw_fit == max_fit:
                 dw_global_count += 1
             else:
@@ -125,10 +135,13 @@ def main(inputFile, runs, thresh, chunky, ss_prob):
 
             num_chunky_steps.append(chunky_steps)
             num_chunky_scans.append(chunky_scans)
+            
             final_chunky_fitness.append(chunky_fit)
+            
             norm_chunky_fit = chunky_fit/max_fit
             norm_chunky_fitness.append(norm_chunky_fit)
             final_chunky_diff.append(norm_chunky_fit - norm_start_fit)
+            
             # to recreate the table that B&S have need other variables
             if chunky_fit == max_fit:
                 chunky_global_count += 1
@@ -159,10 +172,58 @@ def main(inputFile, runs, thresh, chunky, ss_prob):
     print_fitness_peak((chunky_global_count/(i*runs)), nonglobal_chunky_fit)"""
     
     #Really what we want to be doing is returning the info so that it can be output later.
-    result_dict = {'P' : P, 'D' : D, 'Kw' : Kw, 'Kb' : Kb, 'threshold' : threshold, 'ss_prob' : ss_prob, 'local_result' : {}, 'dw_result' : {}, 'chunky_result' : {}}
-    result_dict['local_result'] = {'norm_fit' : np.mean(norm_local_fitness), 'fit_conf' : conf_int_hw(norm_local_fitness), 'avg_impr' : np.mean(final_local_diff), 'impr_conf' : conf_int_hw(final_local_diff), 'pct_global' : (local_global_count/(i*runs)), 'nonglobal_fit' : np.mean(nonglobal_local_fit), 'nonglobal_conf' : conf_int_hw(nonglobal_local_fit), 'avg_steps' : np.mean(num_local_steps), 'step_conf' : conf_int_hw(num_local_steps), 'avg_scans' : np.mean(num_local_scans), 'scan_conf' : conf_int_hw(num_local_scans)}
-    result_dict['dw_result'] = {'norm_fit' : np.mean(norm_dw_fitness), 'fit_conf' : conf_int_hw(norm_dw_fitness), 'avg_impr' : np.mean(final_dw_diff), 'impr_conf' : conf_int_hw(final_dw_diff), 'pct_global' : (dw_global_count/(i*runs)), 'nonglobal_fit' : np.mean(nonglobal_dw_fit), 'nonglobal_conf' : conf_int_hw(nonglobal_dw_fit), 'avg_steps' : np.mean(num_dw_steps), 'step_conf' : conf_int_hw(num_dw_steps), 'avg_scans' : np.mean(num_dw_scans), 'scan_conf' : conf_int_hw(num_dw_scans)}
-    result_dict['chunky_result'] = {'norm_fit' : np.mean(norm_chunky_fitness), 'fit_conf' : conf_int_hw(norm_chunky_fitness), 'avg_impr' : np.mean(final_chunky_diff), 'impr_conf' : conf_int_hw(final_chunky_diff), 'pct_global' : (chunky_global_count/(i*runs)), 'nonglobal_fit' : np.mean(nonglobal_chunky_fit), 'nonglobal_conf' : conf_int_hw(nonglobal_chunky_fit), 'avg_steps' : np.mean(num_chunky_steps), 'step_conf' : conf_int_hw(num_chunky_steps), 'avg_scans' : np.mean(num_chunky_scans), 'scan_conf' : conf_int_hw(num_chunky_scans)}
+    result_dict =   { 
+                    'P': P, 
+                    'D': D, 
+                    'Kw': Kw, 
+                    'Kb': Kb, 
+                    'threshold': threshold, 
+                    'ss_prob': ss_prob, 
+                    'local_result': {}, 
+                    'dw_result': {}, 
+                    'chunky_result': {}
+                    }
+    
+    result_dict['local_result'] = {
+                    'norm_fit': np.mean(norm_local_fitness), 
+                    'fit_conf': conf_int_hw(norm_local_fitness), 
+                    'avg_impr': np.mean(final_local_diff), 
+                    'impr_conf': conf_int_hw(final_local_diff), 
+                    'pct_global': (local_global_count/(i*runs)), 
+                    'nonglobal_fit': np.mean(nonglobal_local_fit), 
+                    'nonglobal_conf': conf_int_hw(nonglobal_local_fit), 
+                    'avg_steps': np.mean(num_local_steps), 
+                    'step_conf': conf_int_hw(num_local_steps), 
+                    'avg_scans': np.mean(num_local_scans), 
+                    'scan_conf': conf_int_hw(num_local_scans)
+                    }
+
+    result_dict['dw_result'] = {
+                    'norm_fit': np.mean(norm_dw_fitness), 
+                    'fit_conf': conf_int_hw(norm_dw_fitness), 
+                    'avg_impr': np.mean(final_dw_diff), 
+                    'impr_conf': conf_int_hw(final_dw_diff), 
+                    'pct_global': (dw_global_count/(i*runs)), 
+                    'nonglobal_fit': np.mean(nonglobal_dw_fit), 
+                    'nonglobal_conf': conf_int_hw(nonglobal_dw_fit), 
+                    'avg_steps': np.mean(num_dw_steps), 
+                    'step_conf': conf_int_hw(num_dw_steps), 
+                    'avg_scans': np.mean(num_dw_scans), 
+                    'scan_conf': conf_int_hw(num_dw_scans)}
+    
+    result_dict['chunky_result'] = {
+                    'norm_fit': np.mean(norm_chunky_fitness), 
+                    'fit_conf': conf_int_hw(norm_chunky_fitness), 
+                    'avg_impr': np.mean(final_chunky_diff), 
+                    'impr_conf': conf_int_hw(final_chunky_diff), 
+                    'pct_global': (chunky_global_count/(i*runs)), 
+                    'nonglobal_fit': np.mean(nonglobal_chunky_fit), 
+                    'nonglobal_conf': conf_int_hw(nonglobal_chunky_fit), 
+                    'avg_steps': np.mean(num_chunky_steps), 
+                    'step_conf': conf_int_hw(num_chunky_steps), 
+                    'avg_scans': np.mean(num_chunky_scans), 
+                    'scan_conf': conf_int_hw(num_chunky_scans)
+                    }
     
     return(result_dict)
  
@@ -397,7 +458,7 @@ def chunky_search(Current_position, N, NK, Power_key, flag="chunky"):
         print("ERROR: Please provide a correct flag to indicate chunky search type")
 
     stepped = 0
-    scanned = 1 #you evaluate your initial starting position
+    scanned = 1 # you evaluate your initial starting position
 
     for j in range(len(chunks)):
         New_position = Current_position.copy()
@@ -460,15 +521,15 @@ def fitness(position, N, NK, Power_key):
 def local_max(position, N, NK, Power_key):
     return NK[np.sum(position*Power_key), 2*N+1]
 
-def max_fitness(NK, N, Power_key):
-    #Need to change this to utilize local_max column in landscape matrix
-    # max_fit=0
-    # for dec in itertools.product(range(2), repeat=N):
-    #     curr_fit = fitness(dec, N, NK, Power_key)
-    #     if curr_fit > max_fit:
-    #         max_fit = curr_fit
+# def max_fitness(NK, N, Power_key):
+#     #Need to change this to utilize local_max column in landscape matrix
+#     # max_fit=0
+#     # for dec in itertools.product(range(2), repeat=N):
+#     #     curr_fit = fitness(dec, N, NK, Power_key)
+#     #     if curr_fit > max_fit:
+#     #         max_fit = curr_fit
 
-    return max(NK[:,2*N])
+#     return max(NK[:,2*N])
 
 def chunk_fitness(position, num_dec_in_chunk, N, NK, Power_key):
     return np.mean(NK[np.sum(position*Power_key), N:(N+num_dec_in_chunk)])
