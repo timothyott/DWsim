@@ -91,7 +91,6 @@ def main(inputFile, runs, thresh, chunky, ss_prob):
 
     for land in range(i): 
         max_fit = max(NK[land,:,2*N])
-        # max_fitness(NK[land], N, Power_key)
         
         for _ in range(runs):
             start = random_start(N)
@@ -99,7 +98,7 @@ def main(inputFile, runs, thresh, chunky, ss_prob):
             norm_start_fit = start_fit/max_fit
 
             (local_steps, local_scans, local_fit) = local_search(start, N, NK[land], Power_key)
-            (dw_steps, dw_scans, dw_fit, dw_steps_per_domain) = decision_weaving_threshold(start, N, P, D, NK[land], Power_key, Domain_decision_set, threshold, ss_prob)
+            (dw_steps, dw_scans, dw_fit, dw_steps_per_domain) = decision_weaving(start, N, P, D, NK[land], Power_key, Domain_decision_set, threshold, ss_prob)
             (chunky_steps, chunky_scans, chunky_fit) = chunky_search(start, N, NK[land], Power_key, chunk_flags[chunk_key])
 
 
@@ -149,27 +148,6 @@ def main(inputFile, runs, thresh, chunky, ss_prob):
                 nonglobal_chunky_fit.append(norm_chunky_fit)
 
     print("Finished!")
-    """print("Local Search results for " + str(i) + " landscapes:")
-    print_fitness(final_local_fitness, norm_local_fitness, final_local_diff)
-    print_num_steps(num_local_steps)
-    print_num_scans(num_local_scans)
-    #B&S stats
-    print_fitness_peak((local_global_count/(i*runs)), nonglobal_local_fit)
-
-    print("Decision Weaving results for " + str(i) + " landscapes:")
-    print_fitness(final_dw_fitness, norm_dw_fitness, final_dw_diff)    
-    print_num_steps(num_dw_steps)
-    print_num_domain_steps(num_dw_steps_per_domain)
-    print_num_scans(num_dw_scans)
-    #B&S stats
-    print_fitness_peak((dw_global_count/(i*runs)), nonglobal_dw_fit)
-
-    print("Chunky Search results for " + str(i) + " landscapes:")
-    print_fitness(final_chunky_fitness, norm_chunky_fitness, final_chunky_diff)    
-    print_num_steps(num_chunky_steps)
-    print_num_scans(num_chunky_scans)
-    # B&S stats
-    print_fitness_peak((chunky_global_count/(i*runs)), nonglobal_chunky_fit)"""
     
     #Really what we want to be doing is returning the info so that it can be output later.
     result_dict =   { 
@@ -178,54 +156,21 @@ def main(inputFile, runs, thresh, chunky, ss_prob):
                     'Kw': Kw, 
                     'Kb': Kb, 
                     'threshold': threshold, 
-                    'ss_prob': ss_prob, 
-                    'local_result': {}, 
-                    'dw_result': {}, 
-                    'chunky_result': {}
+                    'ss_prob': ss_prob
                     }
     
-    result_dict['local_result'] = {
-                    'norm_fit': np.mean(norm_local_fitness), 
-                    'fit_conf': conf_int_hw(norm_local_fitness), 
-                    'avg_impr': np.mean(final_local_diff), 
-                    'impr_conf': conf_int_hw(final_local_diff), 
-                    'pct_global': (local_global_count/(i*runs)), 
-                    'nonglobal_fit': np.mean(nonglobal_local_fit), 
-                    'nonglobal_conf': conf_int_hw(nonglobal_local_fit), 
-                    'avg_steps': np.mean(num_local_steps), 
-                    'step_conf': conf_int_hw(num_local_steps), 
-                    'avg_scans': np.mean(num_local_scans), 
-                    'scan_conf': conf_int_hw(num_local_scans)
-                    }
+    local_dict = compile_search_results("local", norm_local_fitness, final_local_diff, local_global_count, i, runs, nonglobal_local_fit, num_local_steps, num_local_scans)
+    dw_dict = compile_search_results("dw", norm_dw_fitness, final_dw_diff, dw_global_count, i, runs, nonglobal_dw_fit, num_dw_steps, num_dw_scans)
+    chunky_dict = compile_search_results("chunky", norm_chunky_fitness, final_chunky_diff, chunky_global_count, i, runs, nonglobal_chunky_fit, num_chunky_steps, num_chunky_scans)
+    
+    steps_per_domain_array = np.array(num_dw_steps_per_domain)
 
-    result_dict['dw_result'] = {
-                    'norm_fit': np.mean(norm_dw_fitness), 
-                    'fit_conf': conf_int_hw(norm_dw_fitness), 
-                    'avg_impr': np.mean(final_dw_diff), 
-                    'impr_conf': conf_int_hw(final_dw_diff), 
-                    'pct_global': (dw_global_count/(i*runs)), 
-                    'nonglobal_fit': np.mean(nonglobal_dw_fit), 
-                    'nonglobal_conf': conf_int_hw(nonglobal_dw_fit), 
-                    'avg_steps': np.mean(num_dw_steps), 
-                    'step_conf': conf_int_hw(num_dw_steps), 
-                    'avg_scans': np.mean(num_dw_scans), 
-                    'scan_conf': conf_int_hw(num_dw_scans)}
-    
-    result_dict['chunky_result'] = {
-                    'norm_fit': np.mean(norm_chunky_fitness), 
-                    'fit_conf': conf_int_hw(norm_chunky_fitness), 
-                    'avg_impr': np.mean(final_chunky_diff), 
-                    'impr_conf': conf_int_hw(final_chunky_diff), 
-                    'pct_global': (chunky_global_count/(i*runs)), 
-                    'nonglobal_fit': np.mean(nonglobal_chunky_fit), 
-                    'nonglobal_conf': conf_int_hw(nonglobal_chunky_fit), 
-                    'avg_steps': np.mean(num_chunky_steps), 
-                    'step_conf': conf_int_hw(num_chunky_steps), 
-                    'avg_scans': np.mean(num_chunky_scans), 
-                    'scan_conf': conf_int_hw(num_chunky_scans)
-                    }
-    
-    return(result_dict)
+    dw_dict['dw_steps_per_domain'] = np.mean(steps_per_domain_array, axis=0)
+    dw_dict['dw_steps_per_domain_conf_int'] = np.apply_along_axis(conf_int_hw, 0, steps_per_domain_array)
+
+    full_results_dict = merge_dicts(result_dict, local_dict, dw_dict, chunky_dict)
+
+    return(full_results_dict)
  
 
 # FUNCTIONS
@@ -301,53 +246,7 @@ def local_step(N, NK, Current_position, Power_key):
     # If we're here, we must be at a local optimum
     return (Current_position, scans)
 
-def decision_weaving(Current_position, N, P, D, NK, Power_key, Domain_decision_set):
-    New_position = Current_position.copy()
-    New_position[0] = abs(Current_position[0] - 1)
-    unvisited_policies = np.arange(P)
-    stepped = 0
-    scanned = 0
-
-    np.random.shuffle(unvisited_policies)
-    for policy in unvisited_policies:
-        (New_position, steps, scans) = search_domain(N, P, D, NK, Current_position, policy, Power_key, Domain_decision_set)
-        stepped += steps
-        scanned += scans
-
-        Current_position = New_position.copy()
-
-    return stepped, scanned, fitness(Current_position, N, NK, Power_key)
-
-def search_domain(N, P, D, NK, Current_position, policy, Power_key, Domain_decision_set):
-    New_position = Current_position.copy()
-    random.shuffle(Domain_decision_set)
-    steps = 0
-    scans = 0
-
-    for pp in Domain_decision_set:
-    # check for other decision sets within domain (policy can change)
-        if not (all(pp == Current_position[policy*D:(policy+1)*D])):
-            scans += 1
-            New_position = Current_position.copy()
-            New_position[policy*D:(policy+1)*D] = pp
-
-            if (fitness(New_position, N, NK, Power_key) > fitness(Current_position, N, NK, Power_key)):
-                # We have found a better position      
-                steps += 1
-                Current_position = New_position.copy()
-
-            New_position = stepping_stone(N, P, D, NK, Current_position, policy, Power_key)
-            #scans += 1
-
-            if not (all(Current_position == New_position)):
-                steps += 1
-                Current_position = New_position.copy()
-            #if (steps >= 3):
-            #    break
-
-    return Current_position, steps, scans
-
-def decision_weaving_threshold(Current_position, N, P, D, NK, Power_key, Domain_decision_set, threshold, ss_prob):
+def decision_weaving(Current_position, N, P, D, NK, Power_key, Domain_decision_set, threshold, ss_prob):
     unvisited_policies = np.arange(P)
     stepped = 0
     scanned = 1 #you scan the position you start in
@@ -355,7 +254,7 @@ def decision_weaving_threshold(Current_position, N, P, D, NK, Power_key, Domain_
 
     np.random.shuffle(unvisited_policies)
     for policy in unvisited_policies:
-        (New_position, steps, scans) = search_domain_threshold(N, P, D, NK, Current_position, policy, Power_key, Domain_decision_set, threshold, ss_prob)
+        (New_position, steps, scans) = search_domain(N, P, D, NK, Current_position, policy, Power_key, Domain_decision_set, threshold, ss_prob)
         stepped += steps
         scanned += scans
         steps_per_domain.append(steps)
@@ -364,7 +263,7 @@ def decision_weaving_threshold(Current_position, N, P, D, NK, Power_key, Domain_
 
     return stepped, scanned, fitness(Current_position, N, NK, Power_key), steps_per_domain
 
-def search_domain_threshold(N, P, D, NK, Current_position, policy, Power_key, Domain_decision_set, learning_threshold, ss_prob):
+def search_domain(N, P, D, NK, Current_position, policy, Power_key, Domain_decision_set, learning_threshold, ss_prob):
     New_position = Current_position.copy()
     random.shuffle(Domain_decision_set)
     focus_steps = 0
@@ -604,6 +503,32 @@ def domain_dec_set(D):
 
     random.shuffle(dec_set)
     return dec_set
+
+def compile_search_results(search_strat, norm_fitness, final_perf_diff, global_count, i, runs, nonglobal_fit, num_steps, num_scans):
+    results_dict = {
+                    search_strat + '_norm_fit': np.mean(norm_fitness), 
+                    search_strat + '_fit_conf': conf_int_hw(norm_fitness), 
+                    search_strat + '_avg_impr': np.mean(final_perf_diff), 
+                    search_strat + '_impr_conf': conf_int_hw(final_perf_diff), 
+                    search_strat + '_pct_global': (global_count/(i*runs)), 
+                    search_strat + '_nonglobal_fit': np.mean(nonglobal_fit), 
+                    search_strat + '_nonglobal_conf': conf_int_hw(nonglobal_fit), 
+                    search_strat + '_avg_steps': np.mean(num_steps), 
+                    search_strat + '_step_conf': conf_int_hw(num_steps), 
+                    search_strat + '_avg_scans': np.mean(num_scans), 
+                    search_strat + '_scan_conf': conf_int_hw(num_scans)
+                    }
+    return results_dict
+
+def merge_dicts(*dict_args):
+    """
+    Given any number of dicts, shallow copy and merge into a new dict,
+    precedence goes to key value pairs in latter dicts.
+    """
+    result = {}
+    for dictionary in dict_args:
+        result.update(dictionary)
+    return result
 
 if __name__ == '__main__':
     main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
